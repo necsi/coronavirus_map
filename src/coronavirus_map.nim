@@ -276,6 +276,12 @@ when isMainModule:
     corona.province = province
     corona.country = country
     corona.admin_level = level
+    corona.confirm = conf
+    corona.confirm_daily = conf_daily
+    corona.recover = rcvr
+    corona.recover_daily = rcvr_daily
+    corona.deaths = dead
+    corona.deaths_daily = dead_daily
 
     if corona.country != "Italy":
       try:
