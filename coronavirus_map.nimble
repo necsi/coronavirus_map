@@ -5,7 +5,7 @@ author        = "Michael Buchel"
 description   = "Coronavirus mapping package for necsi"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["coronavirus_map"]
+bin           = @["coronavirus_map", "manual_override"]
 binDir        = "bin"
 
 backend       = "cpp"
