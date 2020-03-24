@@ -43,6 +43,18 @@ const
   DeathURL = BaseURL & "-Deaths.csv"
   SpecialCountries = @["Canada", "US", "Australia"]
   SpecialISO = @["CA", "US", "AU"]
+  MapForBorders = toTable({
+    "Mayotte": "France", "Curacao": "Netherlands",
+    "Reunion": "France", "Bermuda": "United Kingdom",
+    "Virgin Islands": "US", "Montserrat": "United Kingdom",
+    "Guadeloupe": "France", "French Guiana": "France",
+    "Greenland": "Denmark", "France": "France"
+  })
+  BorderCountries = toTable({
+    "Bahamas, The": "Bahamas", "Saint Vincent and the Grenadines": "Saint Vincent and the Grenadines",
+    "New Zealand": "New Zealand", "Philippines": "Philippines", "Mauritania": "Mauritania",
+    "Congo (Brazzaville)": "Congo"
+  })
 
 proc `%`(c: TimeData): JsonNode =
   ## Converts time series data object into json
@@ -83,9 +95,11 @@ proc determineLevel(city: string, province: string, country: string): int =
   ## Reason
   ## Simplifies the resulting admin level
   result = 0
-  if country == "US" and city != "":
+  if province in MapForBorders and MapForBorders[province] == country:
+    result = 0
+  elif country == "US" and city != "":
     result = 1
-  if province != country and province != "" and not (country in SpecialCountries):
+  elif province != country and province != "" and not (country in SpecialCountries):
     result = 1
     if city != "":
       result = 2
@@ -173,12 +187,12 @@ when isMainModule:
   for i in 0 ..< len(country_json_file["features"]):
     var x = country_json_file["features"][i]
     countries &= getPolygons(x)
-    x["properties"] = %*{"iso": x["properties"]["ISO2"]}
+    x["properties"] = %*{"iso": x["properties"]["ISO2"], "name": x["properties"]["NAME"]}
 
   for i in 0 ..< len(province_json_file["features"]):
     var x = province_json_file["features"][i]
     countries &= getPolygons(x)
-    x["properties"] = %*{"iso": x["properties"]["iso"]}
+    x["properties"] = %*{"iso": x["properties"]["iso"], "name": x["properties"]["name"]}
     country_json_file["features"] &= x
 
   # Reads all the csvs
@@ -310,7 +324,7 @@ when isMainModule:
     china_time_series: TimeSeries = @[]
 
   for i, x in corona_dataset:
-    if x.country == "China":
+    if x.country == "China" and (x.province != "Macao" or x.province != "Hong Kong"):
       if china_time_series == @[]:
         china_time_series = times[i]
       else:
@@ -322,18 +336,12 @@ when isMainModule:
           china_time_series[j].deaths += times[i][j].deaths
           china_time_series[j].deaths_daily += times[i][j].deaths_daily
       delete(times, i)
-      if x.confirm != -1:
-        china_confirm += x.confirm
-      if x.confirm_daily != -1:
-        china_confirm_daily += x.confirm_daily
-      if x.recover != -1:
-        china_recover += x.recover
-      if x.recover_daily != -1:
-        china_recover_daily += x.recover_daily
-      if x.deaths != -1:
-        china_deaths += x.deaths
-      if x.deaths_daily != -1:
-        china_deaths_daily += x.deaths_daily
+      china_confirm += x.confirm
+      china_confirm_daily += x.confirm_daily
+      china_recover += x.recover
+      china_recover_daily += x.recover_daily
+      china_deaths += x.deaths
+      china_deaths_daily += x.deaths_daily
 
   var china_corona: CoronavirusData
 
@@ -357,8 +365,9 @@ when isMainModule:
   # Finds bounding polygon for dataset
   for ind, c in corona_dataset:
     for i, polygon_list in countries:
+      let property_name = getStr(country_json_file["features"][i]["properties"]["name"])
       for polygon in polygon_list:
-        if c.admin_level == 0 and pointInPolygon(c, polygon):
+        if (c.admin_level == 0 and pointInPolygon(c, polygon)) or (c.country in BorderCountries and property_name == BorderCountries[c.country]):
           let old_iso = country_json_file["features"][i]["properties"]["iso"]
           var country_name = getStr(old_iso)
           if country_name in SpecialISO:
@@ -375,6 +384,7 @@ when isMainModule:
             series[country_name] = times[ind]
           country_json_file["features"][i]["properties"] = %*{
             "iso": old_iso,
+            "name": property_name,
             "date": c.date,
             "city": c.city,
             "province": c.province,
