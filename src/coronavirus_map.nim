@@ -37,10 +37,10 @@ type
 
 # Constants to help simplify coding
 const
-  BaseURL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid"
-  ConfirmedURL = BaseURL & "-Confirmed.csv"
-  RecoveredURL = BaseURL & "-Recovered.csv"
-  DeathURL = BaseURL & "-Deaths.csv"
+  BaseURL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19"
+  ConfirmedURL = BaseURL & "_confirmed_global.csv"
+  RecoveredURL = BaseURL & "_recovered_global.csv"
+  DeathURL = BaseURL & "_deaths_global.csv"
   SpecialCountries = @["Canada", "US", "Australia"]
   SpecialISO = @["CA", "US", "AU"]
   MapForBorders = toTable({
@@ -237,9 +237,9 @@ when isMainModule:
 
     for i in 4 ..< len(confirmed_csv.headers):
       var
-        c = 0
-        r = 0
-        d = 0
+        c = conf
+        r = rcvr
+        d = dead
         date = confirmed_csv.headers[i]
 
       var td: TimeData
@@ -247,21 +247,24 @@ when isMainModule:
       td.date = date
 
       try:
-        c = parseInt(rowEntry(confirmed_csv, date))
+        if date in confirmed_csv.headers:
+          let t = rowEntry(confirmed_csv, date)
+          c = parseInt(t)
       except:
-        c = conf
         echo(&"Failure reading confirmed data entry for date: {date}, country: {country}")
 
       try:
-        r = parseInt(rowEntry(recovered_csv, date))
+        if date in recovered_csv.headers:
+          let t = rowEntry(recovered_csv, date)
+          r = parseInt(t)
       except:
-        r = rcvr
         echo(&"Failure reading recovered data entry for date: {date}, country: {country}")
 
       try:
-        d = parseInt(rowEntry(deaths_csv, date))
+        if date in deaths_csv.headers:
+          let t = rowEntry(deaths_csv, date)
+          d = parseInt(t)
       except:
-        d = dead
         echo(&"Failure reading deaths data entry for date: {date}, country: {country}")
 
       conf_daily = c - conf
